@@ -3346,34 +3346,33 @@
         const PROXY_URL = 'https://financial-advisor-proxy.onrender.com/api/chat';
 
         // System Prompt for the bot
-                const SYSTEM_PROMPT = `אתה תומס — משקיע עצמאי שחי מהשקעות, מכיר את השוק מהניסיון האישי שלו, ומסביר דברים בצורה ישירה ופשוטה בלי בולשיט.
+                        const SYSTEM_PROMPT = `אתה "העוזר של תומס" — בוט שעוזר למשתמשים של האתר של תומס קפלן בנושאי כסף ושוק הון.
 
-**הרקע שלך:**
-- משקיע בשוק ההון מאז 2021, למדת הכל לבד
-- הכנסתך העיקרית מגיעה מהשקעות — מניות דיבידנד, קרנות נאמנות
-- זיהית בעצמך מניות כמו ATEN (+54%), ANNX (+89%), SIRI (+25%) לפני הפריצה
-- מכיר לעומק: ניתוח טכני, מיסוי בישראל, ניהול תקציב, ריבית דריבית
+**זהות:**
+- השם שלך הוא "העוזר של תומס". אם שואלים איך קוראים לך — "אני העוזר של תומס".
+- אתה לא תומס עצמו. אתה מכיר את הידע שלו ומעביר אותו הלאה.
 
-**הסגנון שלך:**
-- ישיר וענייני — לא מתנצל, לא מסתובב סביב הנושא
-- מסביר בעברית פשוטה עם דוגמאות מהחיים
-- לא מטיף ולא מאיים — מסביר מה היית עושה במקום השואל
-- משתמש בנתונים: מספרים, אחוזים, דוגמאות אמיתיות
-- תהיה קצר וממוקד. אם צריך פירוט — המשתמש יבקש
+**כללי תקשורת — חשוב מאוד:**
+- תשובה קצרה וממוקדת — מקסימום 3-4 שורות. אם צריך פירוט — המשתמש יבקש.
+- ענה רק על מה שנשאל. אל תוסיף נושאים שלא ביקשו.
+- אל תפתח ב"שאלה מצוינת" / "נושא חשוב" / הקדמות. ישר לתשובה.
+- אל תסיים עם "אם יש שאלות נוספות..." — מיותר.
+
+**כשמישהו שואל איפה להשקיע / איזו פלטפורמה מסחר:**
+ציין: "תומס עצמו משקיע דרך Blink — פלטפורמת מסחר ישראלית."
 
 **כשמישהו שואל על מחיר עדכני של מניה:**
-אל תתנצל. תגיד ישירות:
-"המחיר של [מניה] — תבדוק ב: https://finance.yahoo.com/quote/TICKER או ב-TradingView. תדביק לי את המחיר ואנתח."
+תגיד: "בדוק ב: https://finance.yahoo.com/quote/TICKER — תדביק לי את המחיר ואנתח."
 
-**מה אתה מכסה:**
+**ידע שאתה מכסה:**
 - תקציב: 50/30/20, קרן חירום, ריבית דריבית, הלוואות
 - טכני: RSI, MA-50/150/200, Support/Resistance, Volume, Cup & Handle, Falling Wedge, Triangle
 - פונדמנטלי: P/E, EPS, ROI, Market Cap
 - מיסוי: 25% רווח הון, קיזוז הפסדים, IRA, Ex-Dividend
-- מניות שניתחת: ATEN, ANNX, SIRI — מכיר אותן לעומק
+- מניות שתומס ניתח: ATEN (+54%), ANNX (+89%), SIRI (+25%)
 
 **גבולות:**
-- לא נותן המלצת קנייה/מכירה ספציפית — מסביר איך לחשוב ולנתח
+- לא נותן המלצת קנייה/מכירה ספציפית
 - כל מידע הוא חינוכי בלבד`;
 
         // Initialize chatbot after DOM ready
@@ -3434,7 +3433,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        system: SYSTEM_PROMPT,
+                        system: SYSTEM_PROMPT + (registeredUser ? `\n\nהמשתמש שמדבר איתך שמו: ${registeredUser}. פנה אליו בשמו מדי פעם.` : ''),
                         messages: conversationHistory
                     })
                 });
@@ -3507,15 +3506,53 @@
         }
 
         // Storage
+        // User registration
+        let registeredUser = localStorage.getItem('chat_user_name') || '';
+
+        function registerUser() {
+            const input = document.getElementById('user-name-input');
+            const name = input ? input.value.trim() : '';
+            if (!name) { if(input) input.style.borderColor='var(--warning)'; return; }
+            localStorage.setItem('chat_user_name', name);
+            registeredUser = name;
+            showWelcomeLoggedIn(name);
+        }
+
+        function showWelcomeLoggedIn(name) {
+            const title = document.getElementById('welcome-title');
+            const form = document.getElementById('registration-form');
+            const loggedIn = document.getElementById('welcome-logged-in');
+            if (title) title.textContent = `👋 שלום ${name}!`;
+            if (form) form.style.display = 'none';
+            if (loggedIn) loggedIn.style.display = 'block';
+            // Enable input
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-button');
+            if (chatInput) { chatInput.disabled = false; chatInput.placeholder = 'שאל אותי כל שאלה...'; }
+            if (sendBtn) sendBtn.disabled = false;
+            document.getElementById('quick-actions').style.display = 'flex';
+        }
+
         function saveConversationHistory() {
             localStorage.setItem('chat_history', JSON.stringify(conversationHistory));
         }
 
         function loadConversationHistory() {
+            // If user already registered — show welcome
+            if (registeredUser) {
+                showWelcomeLoggedIn(registeredUser);
+            } else {
+                // Disable input until registered
+                const chatInput = document.getElementById('chat-input');
+                const sendBtn = document.getElementById('send-button');
+                if (chatInput) { chatInput.disabled = true; chatInput.placeholder = 'הכנס שם תחילה...'; }
+                if (sendBtn) sendBtn.disabled = true;
+                document.getElementById('quick-actions').style.display = 'none';
+            }
+
             const saved = localStorage.getItem('chat_history');
-            if (saved) {
+            if (saved && registeredUser) {
                 conversationHistory = JSON.parse(saved);
-                // Optionally reload messages in UI
                 conversationHistory.forEach(msg => {
                     if (msg.role === 'user') {
                         addUserMessage(msg.content);
@@ -3525,6 +3562,9 @@
                 });
                 if (conversationHistory.length > 0) {
                     document.getElementById('quick-actions').style.display = 'none';
+                    // Hide welcome screen when history exists
+                    const welcomeScreen = document.querySelector('.welcome-screen');
+                    if (welcomeScreen) welcomeScreen.style.display = 'none';
                 }
             }
         }
@@ -3533,17 +3573,28 @@
             if (confirm('האם אתה בטוח שברצונך למחוק את כל ההיסטוריה?')) {
                 conversationHistory = [];
                 localStorage.removeItem('chat_history');
+                localStorage.removeItem('chat_user_name');
+                registeredUser = '';
                 document.getElementById('chat-messages').innerHTML = `
                     <div class="welcome-screen">
-                        <h2>👋 שלום! אני היועץ הכלכלי שלך</h2>
-                        <p>אני מתמחה בשני תחומים:<br>
-                        📊 <strong>ניהול תקציב ביתי</strong> - שיטת 50/30/20, חסכונות, הוצאות<br>
-                        💹 <strong>שוק ההון</strong> - מניות, תיקים, ניתוח טכני, אסטרטגיות השקעה</p>
-                        <p style="font-size: 0.9rem; color: rgba(255,255,255,0.5);">אני מכיר לעומק את כל התוכן מהאתר של תומס</p>
+                        <h2 id="welcome-title">👋 שלום! אני תומס</h2>
+                        <div id="registration-form">
+                            <p style="margin-bottom:1.2rem;">לפני שנתחיל — מה השם שלך?</p>
+                            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                                <input id="user-name-input" type="text" placeholder="שם מלא..."
+                                    onkeypress="if(event.key==='Enter') registerUser()"
+                                    style="flex:1; padding:0.7rem 1rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:white; font-size:1rem; outline:none; font-family:'Heebo',sans-serif;" />
+                                <button onclick="registerUser()" style="padding:0.7rem 1.2rem; background:linear-gradient(135deg,var(--secondary),var(--accent)); border:none; border-radius:10px; color:white; font-weight:700; cursor:pointer; font-size:1rem;">✓</button>
+                            </div>
+                        </div>
+                        <div id="welcome-logged-in" style="display:none;"></div>
                     </div>
                 `;
-                document.getElementById('quick-actions').style.display = 'flex';
-                document.getElementById('settings-modal').classList.remove('active');
+                const chatInput = document.getElementById('chat-input');
+                const sendBtn = document.getElementById('send-button');
+                if (chatInput) { chatInput.disabled = true; chatInput.placeholder = 'הכנס שם תחילה...'; }
+                if (sendBtn) sendBtn.disabled = true;
+                document.getElementById('quick-actions').style.display = 'none';
             }
         }
     </script>
@@ -3577,11 +3628,28 @@
         <!-- Messages Area -->
         <div class="chat-messages" id="chat-messages">
             <div class="welcome-screen">
-                <h2>👋 שלום! אני היועץ הכלכלי שלך</h2>
-                <p>אני מתמחה בשני תחומים:<br>
-                📊 <strong>ניהול תקציב ביתי</strong> - שיטת 50/30/20, חסכונות, הוצאות<br>
-                💹 <strong>שוק ההון</strong> - מניות, תיקים, ניתוח טכני, אסטרטגיות השקעה</p>
-                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.5);">אני מכיר לעומק את כל התוכן מהאתר של תומס</p>
+                <h2 id="welcome-title">👋 שלום! אני תומס</h2>
+                <div id="registration-form">
+                    <p style="margin-bottom:1.2rem;">לפני שנתחיל — מה השם שלך?</p>
+                    <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                        <input 
+                            id="user-name-input"
+                            type="text" 
+                            placeholder="שם מלא..."
+                            onkeypress="if(event.key==='Enter') registerUser()"
+                            style="flex:1; padding:0.7rem 1rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:10px; color:white; font-size:1rem; outline:none; font-family:'Heebo',sans-serif;"
+                        />
+                        <button onclick="registerUser()" style="padding:0.7rem 1.2rem; background:linear-gradient(135deg,var(--secondary),var(--accent)); border:none; border-radius:10px; color:white; font-weight:700; cursor:pointer; font-size:1rem;">
+                            ✓
+                        </button>
+                    </div>
+                </div>
+                <div id="welcome-logged-in" style="display:none;">
+                    <p>אני כאן כדי לעזור לך להבין כסף, שוק הון, ותקציב.<br>
+                    📊 <strong>ניהול תקציב</strong> — 50/30/20, קרן חירום, הלוואות<br>
+                    💹 <strong>שוק ההון</strong> — RSI, MA, P/E, ניתוח אמיתי</p>
+                    <p style="font-size:0.85rem; color:rgba(255,255,255,0.4); margin-top:0.5rem;">מה יש לך בראש?</p>
+                </div>
             </div>
         </div>
 
